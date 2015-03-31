@@ -71,17 +71,20 @@ class launchpad_client(object):
         return bug
 
     def update_bug(self, bug_id=None, **properties):
+
         bug = self.bug(bug_id)
-        updated = False
-        for p in ['title', 'description', 'private', 'tags']:
-            if p in properties:
-                setattr(bug, p, properties[p])
-                updated = True
         if 'affects_project' in properties:
             self.bug().addTask(
                 target=self.launchpad.projects[properties['affects_project']])
-        if updated:
-            bug.lp_save()
+
+        if self._update_if_affects_another(bug_id, **properties) is True:
+            updated = False
+            for p in ['title', 'description', 'private', 'tags']:
+                if p in properties:
+                    setattr(bug, p, properties[p])
+                    updated = True
+            if updated:
+                bug.lp_save()
 
         for task in self.tasks(bug_id):
             self.update_task(task, **properties)
@@ -105,6 +108,23 @@ class launchpad_client(object):
                 task.lp_save()
 
     def add_comment(self, comment, bug_id=None, **properties):
+        if self._update_if_affects_another(bug_id, **properties) is not True:
+            return None
         for p in [task.target.name for task in self.tasks(bug_id)]:
             if p in properties['affects_only']:
                 return self.bug(bug_id).newMessage(content=comment)
+
+    def _update_if_affects_another(self, bug_id=None, **properties):
+        if 'update_if_affects_another' in properties:
+            if properties['update_if_affects_another'] is not True:
+                affects = [task.target.name for task in self.tasks(bug_id)]
+                for p in affects:
+                    if p not in properties['affects_only']:
+                        print('Bug #{} will not be updated because it affects '
+                              'projects ({}), but you specified only ({}).'
+                              ''.format(bug_id,
+                                        ','.join(affects),
+                                        ', '.join(properties['affects_only']))
+                              )
+                        return None
+        return True

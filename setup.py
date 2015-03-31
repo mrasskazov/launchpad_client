@@ -10,7 +10,7 @@ from setuptools import setup
 
 setup(
     name='launchpad_client',
-    version='0.1',
+    version='0.1.1',
     description='High-level Library for manipulating bugs on Launchpad',
     author='Mirantis, Inc.',
     author_email='fuel-osci@mirantis.com',
